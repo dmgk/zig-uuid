@@ -1,5 +1,5 @@
 // Fast allocation-free v4 UUIDs.
-// Partially inspired by the Go implementation at github.com/skeeto/uuid
+// Inspired by the Go implementation at github.com/skeeto/uuid
 
 const std = @import("std");
 const crypto = std.crypto;
@@ -67,6 +67,8 @@ pub const UUID = struct {
         options: fmt.FormatOptions,
         writer: anytype,
     ) !void {
+        _ = options; // currently unused
+
         if (layout.len != 0 and layout[0] != 's')
             @compileError("Unsupported format specifier for UUID type: '" ++ layout ++ "'.");
 
