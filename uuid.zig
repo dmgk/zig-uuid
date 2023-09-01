@@ -22,8 +22,9 @@ pub const UUID = struct {
         return uuid;
     }
 
-    fn to_string(self: UUID) [36]u8 {
-        return format_uuid(self);
+    fn to_string(self: UUID,slice: []u8) void {
+        var string:[36]u8 = format_uuid(self);
+        std.mem.copy(u8, slice, &string);
     }
 
     fn format_uuid(self: UUID) [36]u8 {
@@ -153,8 +154,14 @@ test "invalid UUID" {
 
 test "check to_string works" {
     const uuid1 = UUID.init();
-    const string1 = uuid1.to_string();
-    const string2 = uuid1.to_string();
+
+    var string1: [36]u8 = undefined;
+    var string2: [36]u8 = undefined;
+
+    uuid1.to_string(&string1);
+    uuid1.to_string(&string2);
+
+    std.debug.print("\nUUID {s} \n", .{uuid1});
     std.debug.print("\nFirst  call to_string {s} \n", .{string1});
     std.debug.print("Second call to_string {s} \n", .{string2});
     try testing.expectEqual(string1, string2);
