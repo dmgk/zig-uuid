@@ -22,8 +22,29 @@ pub const UUID = struct {
         return uuid;
     }
 
+    fn to_string(self: UUID,slice: []u8) void {
+        var string:[36]u8 = format_uuid(self);
+        std.mem.copy(u8, slice, &string);
+    }
+
+    fn format_uuid(self: UUID) [36]u8 {
+        var buf: [36]u8 = undefined;
+        buf[8] = '-';
+        buf[13] = '-';
+        buf[18] = '-';
+        buf[23] = '-';
+        inline for (encoded_pos, 0..) |i, j| {
+            buf[i + 0] = hex[self.bytes[j] >> 4];
+            buf[i + 1] = hex[self.bytes[j] & 0x0f];
+        }
+        return buf;
+    }
+
     // Indices in the UUID string representation for each byte.
     const encoded_pos = [16]u8{ 0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34 };
+
+    // Hex
+    const hex = "0123456789abcdef";
 
     // Hex to nibble mapping.
     const hex_to_nibble = [256]u8{
@@ -72,18 +93,7 @@ pub const UUID = struct {
         if (layout.len != 0 and layout[0] != 's')
             @compileError("Unsupported format specifier for UUID type: '" ++ layout ++ "'.");
 
-        var buf: [36]u8 = undefined;
-        const hex = "0123456789abcdef";
-
-        buf[8] = '-';
-        buf[13] = '-';
-        buf[18] = '-';
-        buf[23] = '-';
-        inline for (encoded_pos, 0..) |i, j| {
-            buf[i + 0] = hex[self.bytes[j] >> 4];
-            buf[i + 1] = hex[self.bytes[j] & 0x0f];
-        }
-
+        const buf = format_uuid(self);
         try fmt.format(writer, "{s}", .{buf});
     }
 
@@ -140,4 +150,19 @@ test "invalid UUID" {
     for (uuids) |uuid| {
         try testing.expectError(Error.InvalidUUID, UUID.parse(uuid));
     }
+}
+
+test "check to_string works" {
+    const uuid1 = UUID.init();
+
+    var string1: [36]u8 = undefined;
+    var string2: [36]u8 = undefined;
+
+    uuid1.to_string(&string1);
+    uuid1.to_string(&string2);
+
+    std.debug.print("\nUUID {s} \n", .{uuid1});
+    std.debug.print("\nFirst  call to_string {s} \n", .{string1});
+    std.debug.print("Second call to_string {s} \n", .{string2});
+    try testing.expectEqual(string1, string2);
 }
