@@ -22,9 +22,9 @@ pub const UUID = struct {
         return uuid;
     }
 
-    fn to_string(self: UUID,slice: []u8) void {
-        var string:[36]u8 = format_uuid(self);
-        std.mem.copy(u8, slice, &string);
+    fn to_string(self: UUID, slice: []u8) void {
+        var string: [36]u8 = format_uuid(self);
+        @memcpy(slice, &string);
     }
 
     fn format_uuid(self: UUID) [36]u8 {
