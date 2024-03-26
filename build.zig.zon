@@ -1,0 +1,12 @@
+.{
+    .name = "zig-uuid",
+    .version = "0.0.1",
+
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE",
+        "README.md",
+    },
+}

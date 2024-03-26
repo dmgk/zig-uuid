@@ -8,8 +8,11 @@ const testing = std.testing;
 
 pub const Error = error{InvalidUUID};
 
+pub const bytes_len = 16;
+pub const slice_len = 36;
+
 pub const UUID = struct {
-    bytes: [16]u8,
+    bytes: [bytes_len]u8,
 
     pub fn init() UUID {
         var uuid = UUID{ .bytes = undefined };
@@ -22,13 +25,8 @@ pub const UUID = struct {
         return uuid;
     }
 
-    fn to_string(self: UUID, slice: []u8) void {
-        var string: [36]u8 = format_uuid(self);
-        @memcpy(slice, &string);
-    }
-
-    fn format_uuid(self: UUID) [36]u8 {
-        var buf: [36]u8 = undefined;
+    pub fn toSlice(self: UUID) [36]u8 {
+        var buf: [slice_len]u8 = undefined;
         buf[8] = '-';
         buf[13] = '-';
         buf[18] = '-';
@@ -38,6 +36,11 @@ pub const UUID = struct {
             buf[i + 1] = hex[self.bytes[j] & 0x0f];
         }
         return buf;
+    }
+
+    pub fn copy(self: UUID, dest: *[slice_len]u8) void {
+        const src = self.toSlice();
+        @memcpy(dest, &src);
     }
 
     // Indices in the UUID string representation for each byte.
@@ -82,47 +85,39 @@ pub const UUID = struct {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     };
 
-    pub fn format(
-        self: UUID,
-        comptime layout: []const u8,
-        options: fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        _ = options; // currently unused
-
+    pub fn format(self: UUID, comptime layout: []const u8, _: fmt.FormatOptions, writer: anytype) !void {
         if (layout.len != 0 and layout[0] != 's')
             @compileError("Unsupported format specifier for UUID type: '" ++ layout ++ "'.");
 
-        const buf = format_uuid(self);
+        const buf = self.toSlice();
         try fmt.format(writer, "{s}", .{buf});
     }
 
-    pub fn parse(buf: []const u8) Error!UUID {
-        var uuid = UUID{ .bytes = undefined };
+    pub fn isValid(s: []const u8) bool {
+        return s.len == slice_len and s[8] == '-' and s[13] == '-' and s[18] == '-' and s[23] == '-';
+    }
 
-        if (buf.len != 36 or buf[8] != '-' or buf[13] != '-' or buf[18] != '-' or buf[23] != '-')
+    pub fn parse(s: []const u8) Error!UUID {
+        var buf: [bytes_len]u8 = [_]u8{0} ** bytes_len;
+
+        if (!isValid(s))
             return Error.InvalidUUID;
 
         inline for (encoded_pos, 0..) |i, j| {
-            const hi = hex_to_nibble[buf[i + 0]];
-            const lo = hex_to_nibble[buf[i + 1]];
+            const hi = hex_to_nibble[s[i + 0]];
+            const lo = hex_to_nibble[s[i + 1]];
+
             if (hi == 0xff or lo == 0xff) {
                 return Error.InvalidUUID;
             }
-            uuid.bytes[j] = hi << 4 | lo;
+            buf[j] = hi << 4 | lo;
         }
-
-        return uuid;
+        return .{ .bytes = buf };
     }
 };
 
 // Zero UUID
-pub const zero: UUID = .{ .bytes = .{0} ** 16 };
-
-// Convenience function to return a new v4 UUID.
-pub fn newV4() UUID {
-    return UUID.init();
-}
+pub const zero: UUID = .{ .bytes = .{0} ** bytes_len };
 
 test "parse and format" {
     const uuids = [_][]const u8{
@@ -152,17 +147,8 @@ test "invalid UUID" {
     }
 }
 
-test "check to_string works" {
-    const uuid1 = UUID.init();
-
-    var string1: [36]u8 = undefined;
-    var string2: [36]u8 = undefined;
-
-    uuid1.to_string(&string1);
-    uuid1.to_string(&string2);
-
-    std.debug.print("\nUUID {s} \n", .{uuid1});
-    std.debug.print("\nFirst  call to_string {s} \n", .{string1});
-    std.debug.print("Second call to_string {s} \n", .{string2});
-    try testing.expectEqual(string1, string2);
+test "UUID.copy()" {
+    const uuid = UUID.init();
+    var s: [36]u8 = undefined;
+    uuid.copy(&s);
 }
